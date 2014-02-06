@@ -1,6 +1,5 @@
 package cc.factorie.app.nlp.phrase
 
-import cc.factorie._
 import cc.factorie.app.nlp._
 import cc.factorie.app.nlp.pos._
 import cc.factorie.app.nlp.morph.BasicMorphologicalAnalyzer
@@ -15,8 +14,8 @@ object NumberDomain extends EnumDomain {
   PLURAL = Value   // person, but uncertain about gender
 }
 
-class NumberLabel[P <: Phrase](val phrase: P, initialCategory:String) extends CategoricalVariable(initialCategory) {
-  def this(m:P, initialIntValue:Int) = this(m, NumberDomain(initialIntValue).category.asInstanceOf[String])
+class NumberLabel(val phrase: Phrase, initialCategory:String) extends CategoricalVariable(initialCategory) {
+  def this(m:Phrase, initialIntValue:Int) = this(m, NumberDomain(initialIntValue).category.asInstanceOf[String])
   def domain = NumberDomain
 }
 
@@ -50,10 +49,10 @@ class NumberLabeler[P <: Phrase, PL <: TokenSpanList[P]](implicit ctList:ClassTa
     }
     document
   }
-  override def tokenAnnotationString(token:Token): String = { val phrases = token.document.attr()(ctList).filter(_.contains(token)); phrases.map(_.attr[NumberLabel[P]].categoryValue).mkString(",") }
-  override def phraseAnnotationString(phrase:Phrase): String = { val t = phrase.attr[NumberLabel[P]]; if (t ne null) t.categoryValue else "_" }
+  override def tokenAnnotationString(token:Token): String = { val phrases = token.document.attr()(ctList).filter(_.contains(token)); phrases.map(_.attr[NumberLabel].categoryValue).mkString(",") }
+  override def phraseAnnotationString(phrase:Phrase): String = { val t = phrase.attr[NumberLabel]; if (t ne null) t.categoryValue else "_" }
   def prereqAttrs: Iterable[Class[_]] = List(classOf[PennPosTag], classOf[NounPhrase])
-  def postAttrs: Iterable[Class[_]] = List(classOf[NumberLabel[P]])
+  def postAttrs: Iterable[Class[_]] = List(classOf[NumberLabel])
 }
 
 object NounPhraseNumberLabeler extends NumberLabeler[NounPhrase,NounPhraseList]

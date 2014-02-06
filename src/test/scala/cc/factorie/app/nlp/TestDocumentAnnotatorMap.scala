@@ -70,7 +70,7 @@ class TestDocumentAnnotatorMap {
     map += parseBasedMentionFinding
     object coref1 extends DocumentAnnotator {
       def tokenAnnotationString(token: Token) = ""
-      def prereqAttrs = Seq(classOf[MentionList], classOf[MentionEntityType], classOf[GenderLabel[Mention]], classOf[NumberLabel[Mention]])
+      def prereqAttrs = Seq(classOf[MentionList], classOf[MentionEntityType], classOf[GenderLabel], classOf[NumberLabel])
       def postAttrs = Seq(classOf[GenericEntityMap[Mention]])
       def process(document: Document) = document
     }

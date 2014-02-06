@@ -21,7 +21,7 @@ abstract class ForwardCorefBase extends DocumentAnnotator {
   val options = new Coref1Options
   val model: PairwiseCorefModel
 
-  def prereqAttrs: Seq[Class[_]] = Seq(classOf[MentionList], classOf[MentionEntityType], classOf[GenderLabel[Mention]], classOf[NumberLabel[Mention]])
+  def prereqAttrs: Seq[Class[_]] = Seq(classOf[MentionList], classOf[MentionEntityType], classOf[GenderLabel], classOf[NumberLabel])
   def postAttrs = Seq(classOf[GenericEntityMap[Mention]])
   def process(document: Document) = {
     if (options.useEntityLR) document.attr += processDocumentOneModelFromEntities(document)
@@ -455,13 +455,13 @@ class ForwardCorefImplicitConjunctions extends ForwardCorefBase {
 }
 
 object ForwardCoref extends ForwardCoref {
-  override def prereqAttrs: Seq[Class[_]] = Seq(classOf[MentionEntityType], classOf[GenderLabel[Mention]], classOf[NumberLabel[Mention]])
+  override def prereqAttrs: Seq[Class[_]] = Seq(classOf[MentionEntityType], classOf[GenderLabel], classOf[NumberLabel])
   deserialize(new DataInputStream(ClasspathURL[ForwardCoref](".factorie").openConnection().getInputStream))
 }
 
 // This should only be used when using the NerAndPronounMentionFinder to find mentions
 class NerForwardCoref extends ForwardCoref {
-  override def prereqAttrs: Seq[Class[_]] = Seq(classOf[NerMentionList], classOf[MentionEntityType], classOf[GenderLabel[Mention]], classOf[NumberLabel[Mention]])
+  override def prereqAttrs: Seq[Class[_]] = Seq(classOf[NerMentionList], classOf[MentionEntityType], classOf[GenderLabel], classOf[NumberLabel])
 }
 object NerForwardCoref extends NerForwardCoref {
   deserialize(new DataInputStream(ClasspathURL[NerForwardCoref](".factorie").openConnection().getInputStream))

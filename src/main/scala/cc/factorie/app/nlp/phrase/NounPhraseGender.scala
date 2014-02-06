@@ -12,8 +12,8 @@ object GenderDomain extends EnumDomain {
   MALE,            // male person
   FEMALE = Value   // female person
 }
-class GenderLabel[P <: Phrase](val phrase: P, initialCategory:String) extends CategoricalVariable(initialCategory) {
-  def this(m:P, initialIntValue:Int) = this(m, GenderDomain(initialIntValue).category.asInstanceOf[String])
+class GenderLabel(val phrase: Phrase, initialCategory:String) extends CategoricalVariable(initialCategory) {
+  def this(m:Phrase, initialIntValue:Int) = this(m, GenderDomain(initialIntValue).category.asInstanceOf[String])
   def domain = GenderDomain
 }
 
@@ -152,10 +152,10 @@ class GenderLabeler[P <: Phrase, PL <: TokenSpanList[P]](implicit ctList:ClassTa
   val maleWords = maleFemaleWords.map(_._1).filter(_.length > 0).toSet
   val femaleWords = maleFemaleWords.map(_._2).filter(_.length > 0).toSet
 
-  override def tokenAnnotationString(token:Token): String = { val phrases = token.document.attr()(ctList).filter(_.contains(token)); phrases.map(_.attr[GenderLabel[P]].categoryValue).mkString(",") }
-  override def phraseAnnotationString(phrase:Phrase): String = { val t = phrase.attr[GenderLabel[P]]; if (t ne null) t.categoryValue else "_" }
+  override def tokenAnnotationString(token:Token): String = { val phrases = token.document.attr()(ctList).filter(_.contains(token)); phrases.map(_.attr[GenderLabel].categoryValue).mkString(",") }
+  override def phraseAnnotationString(phrase:Phrase): String = { val t = phrase.attr[GenderLabel]; if (t ne null) t.categoryValue else "_" }
   def prereqAttrs: Iterable[Class[_]] = List(ctList.runtimeClass)//Require some TokenSpanList containing subclass of Phrase elements
-  def postAttrs: Iterable[Class[_]] = List(classOf[GenderLabel[P]])
+  def postAttrs: Iterable[Class[_]] = List(classOf[GenderLabel])
 }
 
 object NounPhraseGenderLabeler extends GenderLabeler[NounPhrase,NounPhraseList]

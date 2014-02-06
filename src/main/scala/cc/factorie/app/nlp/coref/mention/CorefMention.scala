@@ -122,8 +122,8 @@ class MentionCache(m: CorefMention) {
           else if (s.forall(t => t.head.isLetter && t.head.isUpper)) 't'
           else 'f'
     }
-  lazy val gender = m.mention.attr[GenderLabel[Mention]].intValue.toString
-  lazy val number = m.mention.attr[NumberLabel[Mention]].intValue.toString
+  lazy val gender = m.mention.attr[GenderLabel].intValue.toString
+  lazy val number = m.mention.attr[NumberLabel].intValue.toString
   lazy val acronym: Set[String] = {
     if (m.span.length == 1)
         Set.empty

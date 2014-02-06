@@ -9,11 +9,22 @@ import cc.factorie.variable.{BinaryFeatureVectorVariable, CategoricalVectorDomai
 import cc.factorie.optimize.Trainer
 import cc.factorie.app.classify.backend.LinearMulticlassClassifier
 
+/** A part-of-speech tagger that predicts by greedily labeling each word in sequence.
+    Although it does not use Viterbi, it is surprisingly accurate.  It is also fast.
+    
+    For the Viterbi-based part-of-speech tagger, see ChainPosTagger.  
+    @author Andrew McCallum, */
 class ForwardPosTagger extends DocumentAnnotator {
   // Different ways to load saved parameters
   def this(stream:InputStream) = { this(); deserialize(stream) }
   def this(file: File) = this(new FileInputStream(file))
-  def this(url:java.net.URL) = this(url.openConnection.getInputStream)
+  def this(url:java.net.URL) = {
+    this()
+    val stream = url.openConnection.getInputStream
+    if (stream.available <= 0) throw new Error("Could not open "+url)
+    println("ForwardPosTagger loading from "+url)
+    deserialize(stream)
+  }
   
   object FeatureDomain extends CategoricalVectorDomain[String]
   class FeatureVariable(t:Tensor1) extends BinaryFeatureVectorVariable[String] { def domain = FeatureDomain; set(t)(null) } // Only used for printing diagnostics
@@ -420,9 +431,15 @@ object ForwardPosTester {
 	val opts = new ForwardPosOptions
 	opts.parse(args)
 	assert(opts.testFile.wasInvoked || opts.testDir.wasInvoked || opts.testFiles.wasInvoked)
-	  
-	// load model from file if given, else use default model
-	val pos = if(opts.modelFile.wasInvoked) new ForwardPosTagger(new File(opts.modelFile.value)) else OntonotesForwardPosTagger
+	  	
+	// load model from file if given,
+	// else if the wsj command line param was specified use wsj model,
+	// otherwise ontonotes model
+	val pos = {
+	  if(opts.modelFile.wasInvoked) new ForwardPosTagger(new File(opts.modelFile.value))
+	  else if(opts.wsj.value) WSJForwardPosTagger
+	  else OntonotesForwardPosTagger
+	}
 	
 	assert(!(opts.testDir.wasInvoked && opts.testFiles.wasInvoked))
     var testFileList = Seq(opts.testFile.value)

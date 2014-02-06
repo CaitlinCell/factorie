@@ -10,9 +10,9 @@ import cc.factorie.app.nlp.phrase.{MentionGenderLabeler,MentionNumberLabeler}
 import cc.factorie.app.nlp.load.LoadConll2011
 
 /**
- * User: apassos
- * Date: 6/27/13
- * Time: 1:01 PM
+ * @author apassos
+ *
+ *
  */
 
 

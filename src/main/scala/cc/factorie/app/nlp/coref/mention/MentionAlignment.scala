@@ -12,9 +12,9 @@ import cc.factorie.app.nlp.load.LoadConll2011
 import cc.factorie.app.nlp.coref.Coref1Options
 
 /**
- * User: apassos
- * Date: 6/27/13
- * Time: 12:51 PM
+ * @author apassos
+ *
+ *
  */
 
 object MentionAlignment {

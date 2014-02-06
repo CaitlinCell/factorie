@@ -12,9 +12,9 @@ import cc.factorie.app.nlp.coref.mention._
 import cc.factorie.app.nlp.phrase.{NumberLabel, GenderLabel}
 
 /**
- * User: apassos
- * Date: 6/27/13
- * Time: 12:25 PM
+ * @author apassos
+ *
+ *
  */
 
 abstract class ForwardCorefBase extends DocumentAnnotator {
@@ -166,8 +166,8 @@ abstract class ForwardCorefBase extends DocumentAnnotator {
         println("Test docs")
         accuracy = doTest(testDocs, wn, testTrueMaps, "Test")
 
-      if(saveModelBetweenEpochs && iter % saveFrequency == 0)
-        serialize(filename + "-" + iter)
+        if(saveModelBetweenEpochs && iter % saveFrequency == 0)
+          serialize(filename + "-" + iter)
 
         optimizer match {case o: ParameterAveraging => o.unSetWeightsToAverage(model.parameters) }
       }

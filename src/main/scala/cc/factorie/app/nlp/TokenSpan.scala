@@ -13,7 +13,7 @@
    limitations under the License. */
 
 package cc.factorie.app.nlp
-import cc.factorie._
+
 import cc.factorie.util.{Cubbie, Attr}
 import cc.factorie.variable._
 

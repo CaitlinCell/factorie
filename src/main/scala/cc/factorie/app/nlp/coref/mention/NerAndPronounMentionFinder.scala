@@ -7,9 +7,8 @@ import scala.collection.mutable.ArrayBuffer
 import cc.factorie.variable.Span
 
 /**
- * User: apassos
- * Date: 8/6/13
- * Time: 3:34 PM
+ * @author apassos
+ *
  */
 
 class NerMentionList(spans:Iterable[Mention]) extends MentionList(spans)

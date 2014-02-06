@@ -14,9 +14,8 @@ import cc.factorie.app.nlp.pos.PennPosTag
 
 
 /**
- * User: cellier
- * Date: 10/7/13
- * Time: 2:49 PM
+ * @author Cellier
+ *
  * Chunker based on Sha & Pereira '03 using a linear chain crf.
  */
 

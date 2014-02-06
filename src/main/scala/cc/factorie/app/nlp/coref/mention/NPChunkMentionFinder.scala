@@ -5,9 +5,10 @@ import scala.collection.mutable.ListBuffer
 import cc.factorie.app.nlp.load.{ChunkTag, BILOUNestedChunkTag, BILOUChunkTag}
 
 /**
- * User: cellier
- * Date: 10/28/13
- * Time: 11:24 PM
+ * @author Cellier
+ *
+ * Extracts Noun Phrase BILOU Annotated Chunks from the ChainChunker
+ * Annotates the Document with a MentionList
  */
 
 

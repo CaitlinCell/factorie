@@ -168,7 +168,7 @@ object LoadConll2011 {
             val parentPhrase = if(!parseStack.isEmpty) parseStack(0)._1 else ""
             if (phrase == "NP") {
               val span = new TokenSpan(currDoc.asSection, start, docTokInd - start + 1)
-              val m = new Mention(span, getHeadToken(span))
+              val m = new Mention(currDoc.asSection, start, docTokInd - start + 1,getHeadToken(span))
               mentionList += m
               numMentions += 1
 
@@ -214,7 +214,7 @@ object LoadConll2011 {
         //this makes mentions for the ground truth mentions that weren't NPs
         for ((number,start) <- closedEntities.filter(i =>  i ne null)) {
           val span = new TokenSpan(currDoc.asSection, start, docTokInd - start + 1)
-          val m = new Mention(span, getHeadToken(span))
+          val m = new Mention(currDoc.asSection, start, docTokInd - start + 1,getHeadToken(span))
           mentionList += m
           if(currentlyUnresolvedClosedEntityTypeBracket && (entityTypeStart >= start)){
             val exactMatch = (entityTypeStart == start) && thisTokenClosedTheEntityType

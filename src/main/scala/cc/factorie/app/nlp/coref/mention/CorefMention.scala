@@ -2,23 +2,33 @@ package cc.factorie.app.nlp.coref.mention
 
 import cc.factorie.app.nlp.coref._
 import cc.factorie.app.nlp.wordnet.WordNet
-import cc.factorie.app.nlp.{Token, TokenSpan}
+import cc.factorie.app.nlp.{Section, Token, TokenSpan}
 import cc.factorie.app.strings.Stopwords
 import scala.collection.mutable
-import cc.factorie.app.nlp.phrase.{NumberLabel, GenderLabel}
+import cc.factorie.app.nlp.phrase.{Phrase, NumberLabel, GenderLabel}
+import cc.factorie.util.Attr
+import cc.factorie.variable.Span
 
 /**
  * User: apassos
- * Date: 6/27/13
- * Time: 12:23 PM
+ * CorefMention: Wrapper on Mention
+ * Update Feb '14: Cellier
+ *    Removed Mention, Made CorefMention extend from Phrase
  */
-object CorefMention{
-  def mentionToCorefMention(m: Mention): CorefMention = {
-    val cm = new CorefMention(m,m.start,m.sentence.indexInSection)
-    cm.attr += new MentionEntityType(m, m.attr[MentionEntityType].categoryValue)
+
+object Mention{
+  def phraseToMention(p: Phrase): Mention = {
+    val headOffset = if(p.headTokenOffset == -1) getHeadIdx(p.value) else p.headTokenOffset
+    val cm = new Mention(p.section,p.start,p.length,headOffset)
+    cm.attr += new MentionEntityType(cm, cm.attr[MentionEntityType].categoryValue)
     cm
   }
 
+  def getHeadIdx(s: Span[Section,Token], mentionType: String = null): Int = {
+    val idx = s.lastIndexWhere(_.posTag.categoryValue.startsWith("NN"))
+    //assert(idx != -1, "failed to find a noun in the span") //todo: put this back in
+    if(idx < 0)  s.length -1 else idx      //todo: this handles the case where it didn't find an NN anywhere. Should that be happening?
+  }
 
   //todo: the default headTokenIndex here is a little funky. If you don't pass it anything, it sets it using the NN heuristic below.
   //todo: however, if the span truly has the root as its parse parent, we also use the NN heuristic. Is there something else we should be doing for this second case?
@@ -35,10 +45,8 @@ object CorefMention{
       }else
         headTokenIndex
     }
-
-    val docMention = new Mention(span, headInd)
-    docMention.attr += new MentionType(docMention,mentionType)
-    new CorefMention(docMention, tokenNum,  sentenceNum)
+    val mention = new Mention(span.section, tokenNum,  sentenceNum, headInd)
+    mention.attr += new MentionType(mention,mentionType)
   }
 
   val posTagsSet = Set("PRP", "PRP$", "WP", "WP$")
@@ -50,23 +58,26 @@ object CorefMention{
   val posSet = Seq("POS")
 }
 
-// TODO I think "Mention" should become "NounChunk", and then this "CorefMention" should become "Mention extends NounChunk".
-//basically, this is a wrapper around factorie Mention, with some extra stuff
-class CorefMention(val mention: Mention, val tokenNum: Int, val sentenceNum: Int) extends cc.factorie.util.Attr {
-  val _head =  mention.tokens(mention.headTokenIndex)  //here, the head token index is an offset into the span, not the document
-  def headToken: Token = _head
-  def parentEntity = mention.attr[Entity]
+/** A Phrase holding a mention of an entity.
+    Note that headTokenIndex is an offset from the beginning of this span, not the beginning of the Section.
+    Note also that since Mention is a Span, and Span is a sequence over Tokens, "this.head" is the first token of the span, not the "natural language head" of the phrase; for the later use "this.headToken". */
+class Mention(section:Section, start:Int, length:Int, val headTokenIndex: Int = -1) extends Phrase(section,start,length,headTokenIndex) with Attr {
+  def this(phrase:Phrase) = this(phrase.section, phrase.start, phrase.length, phrase.headTokenOffset)
+  //val _head =  mention.tokens(mention.headTokenIndex)  //here, the head token index is an offset into the span, not the document
+  val _head = tokens(headTokenIndex)
+  //def headToken: Token = _head
+  def parentEntity = this.attr[Entity]
   def mType = headToken.posTag.categoryValue
-  def span = mention
-  def entityType: String = mention.attr[MentionEntityType].categoryValue
-  def document = mention.document
+  //def span = mention
+  def entityType: String = this.attr[MentionEntityType].categoryValue
+  //def document = section.document
 
-  val isPRO = CorefMention.posTagsSet.contains(mType)
-  val isProper = CorefMention.properSet.contains(mention.headToken.posTag.categoryValue)
-  val isNoun = CorefMention.nounSet.contains(mention.headToken.posTag.categoryValue)
-  val isPossessive = CorefMention.posSet.contains(mention.headToken.posTag.categoryValue)
+  val isPRO = Mention.posTagsSet.contains(mType)
+  val isProper = Mention.properSet.contains(this.headToken.posTag.categoryValue)
+  val isNoun = Mention.nounSet.contains(this.headToken.posTag.categoryValue)
+  val isPossessive = Mention.posSet.contains(this.headToken.posTag.categoryValue)
 
-  def isAppositionOf(m : CorefMention) : Boolean = {
+  def isAppositionOf(m : Mention) : Boolean = {
     val isAppo = headToken.parseLabel.categoryValue == "appos"
     val isChildOf = headToken.parseParent == m.headToken
     isAppo && isChildOf
@@ -81,8 +92,10 @@ class CorefMention(val mention: Mention, val tokenNum: Int, val sentenceNum: Int
   def gender = cache.gender
   def number = cache.number
   def nonDeterminerWords: Seq[String] = cache.nonDeterminerWords
-  def acronym: Set[String] = cache.acronym
-  def nounWords: Set[String] = cache.nounWords
+  def acronym = cache.acronym
+  def nounWords = cache.nounWords
+  //def acronym: Set[String] = cache.acronym
+  //def nounWords: Set[String] = cache.nounWords
   def lowerCaseHead: String = cache.lowerCaseHead
   def initials: String = cache.initials
   def predictEntityType: String = cache.predictEntityType
@@ -97,38 +110,38 @@ class CorefMention(val mention: Mention, val tokenNum: Int, val sentenceNum: Int
   def printInfo : String = Seq[String]("gender", gender,"number", number,"nondet",nonDeterminerWords.mkString(" "),"acronym",acronym.mkString(" "),"nounwords",nounWords.mkString(" "),"lowercasehead",lowerCaseHead,"initials",initials,"ent-type",predictEntityType,"head-phase-trim",headPhraseTrim,"capitalization",capitalization.toString,"wnlemma",wnLemma).mkString("\n")
 }
 
-class MentionCache(m: CorefMention) {
+class MentionCache(m: Mention) {
   import cc.factorie.app.nlp.lexicon
-  lazy val hasSpeakWord = m.mention.exists(s => lexicon.iesl.Say.contains(s.string))
+  lazy val hasSpeakWord = m.exists(s => lexicon.iesl.Say.contains(s.string))
   lazy val wnLemma = WordNet.lemma(m.headToken.string, "n")
   lazy val wnSynsets = WordNet.synsets(wnLemma).toSet
   lazy val wnHypernyms = WordNet.hypernyms(wnLemma)
   lazy val wnAntonyms = wnSynsets.flatMap(_.antonyms()).toSet
   lazy val nounWords: Set[String] =
-      m.span.tokens.filter(_.posTag.categoryValue.startsWith("N")).map(t => t.string.toLowerCase).toSet
-  lazy val lowerCaseHead: String = m.span.phrase.toLowerCase
-  lazy val headPhraseTrim: String = m.span.phrase.trim
+      m.tokens.filter(_.posTag.categoryValue.startsWith("N")).map(t => t.string.toLowerCase).toSet
+  lazy val lowerCaseHead: String = m.phrase.toLowerCase
+  lazy val headPhraseTrim: String = m.phrase.trim
   lazy val nonDeterminerWords: Seq[String] =
-    m.span.tokens.filterNot(_.posTag.categoryValue == "DT").map(t => t.string.toLowerCase)
+    m.tokens.filterNot(_.posTag.categoryValue == "DT").map(t => t.string.toLowerCase)
   lazy val initials: String =
-      m.span.tokens.map(_.string).filterNot(lexicon.iesl.OrgSuffix.contains).filter(t => t(0).isUpper).map(_(0)).mkString("")
-  lazy val predictEntityType: String = m.mention.attr[MentionEntityType].categoryValue
+      m.tokens.map(_.string).filterNot(lexicon.iesl.OrgSuffix.contains).filter(t => t(0).isUpper).map(_(0)).mkString("")
+  lazy val predictEntityType: String = m.attr[MentionEntityType].categoryValue
   lazy val demonym: String = lexicon.iesl.DemonymMap.getOrElse(m.headPhraseTrim, "")
 
   lazy val capitalization: Char = {
-      if (m.span.length == 1 && m.span.head.positionInSentence == 0) 'u' // mention is the first word in sentence
-          val s = m.span.value.filter(_.posTag.categoryValue.startsWith("N")).map(_.string.trim)
+      if (m.length == 1 && m.head.positionInSentence == 0) 'u' // mention is the first word in sentence
+          val s = m.value.filter(_.posTag.categoryValue.startsWith("N")).map(_.string.trim)
           if (s.forall(_.forall(_.isUpper))) 'a'
           else if (s.forall(t => t.head.isLetter && t.head.isUpper)) 't'
           else 'f'
     }
-  lazy val gender = m.mention.attr[GenderLabel].intValue.toString
-  lazy val number = m.mention.attr[NumberLabel].intValue.toString
+  lazy val gender = m.attr[GenderLabel].intValue.toString
+  lazy val number = m.attr[NumberLabel].intValue.toString
   lazy val acronym: Set[String] = {
-    if (m.span.length == 1)
+    if (m.length == 1)
         Set.empty
       else {
-        val alt1 = m.span.value.map(_.string.trim).filter(_.exists(_.isLetter)) // tokens that have at least one letter character
+        val alt1 = m.value.map(_.string.trim).filter(_.exists(_.isLetter)) // tokens that have at least one letter character
         val alt2 = alt1.filterNot(t => Stopwords.contains(t.toLowerCase)) // alt1 tokens excluding stop words
         val alt3 = alt1.filter(_.head.isUpper) // alt1 tokens that are capitalized
         val alt4 = alt2.filter(_.head.isUpper)
@@ -138,7 +151,7 @@ class MentionCache(m: CorefMention) {
 }
 
 object CorefFeatures {
-  def getPairRelations(s1: CorefMention, s2: CorefMention): String = {
+  def getPairRelations(s1: Mention, s2: Mention): String = {
     val l1 = s1.headToken.string.toLowerCase
     val l2 = s2.headToken.string.toLowerCase
     if (l1 == l2)
@@ -155,11 +168,11 @@ object CorefFeatures {
       "Mismatch"
   }
 
-  def matchingTokensRelations(m1: CorefMention, m2: CorefMention) = {
+  def matchingTokensRelations(m1: Mention, m2: Mention) = {
     import cc.factorie.app.nlp.lexicon
     val set = new mutable.HashSet[String]()
-    for (w1 <- m2.span.toSeq.map(_.string.toLowerCase))
-      for (w2 <- m1.span.toSeq.map(_.string.toLowerCase))
+    for (w1 <- m2.toSeq.map(_.string.toLowerCase))
+      for (w2 <- m1.toSeq.map(_.string.toLowerCase))
        if (w1.equals(w2) || m2.wnSynsets.exists(m1.wnHypernyms.contains) || m1.wnHypernyms.exists(m2.wnHypernyms.contains) ||
            lexicon.iesl.Country.contains(w1) && lexicon.iesl.Country.contains(w2) ||
            lexicon.iesl.City.contains(w1) && lexicon.iesl.City.contains(w2) ||
@@ -171,9 +184,9 @@ object CorefFeatures {
     set.toSet
   }
 
-  def countCompatibleMentionsBetween(m1: CorefMention, m2: CorefMention, mentions: Seq[CorefMention]): Seq[String] = {
+  def countCompatibleMentionsBetween(m1: Mention, m2: Mention, mentions: Seq[Mention]): Seq[String] = {
     val doc = m1.document
-    val ments = mentions.filter(s => s.span.start < m1.span.start && s.span.start > m2.span.end)
+    val ments = mentions.filter(m => m.start < m1.start && m.start > m2.end)
     val iter = ments.iterator
     var numMatches = 0
     while (numMatches <= 2 && iter.hasNext) {
@@ -292,7 +305,7 @@ object CorefFeatures {
       g2
   }
 
-  def gendersMatch(m1: CorefMention, m2: CorefMention): Char = {
+  def gendersMatch(m1: Mention, m2: Mention): Char = {
     val g1 = m2.gender
     val g2 = m1.gender
 
@@ -308,7 +321,7 @@ object CorefFeatures {
       'f'
   }
 
-  def headWordsCross(m1: CorefMention, m2: CorefMention, model: PairwiseCorefModel): String = {
+  def headWordsCross(m1: Mention, m2: Mention, model: PairwiseCorefModel): String = {
     val w1 = m2.headPhraseTrim
     val w2 = m1.headPhraseTrim
     val rare1 = 1.0 / model.MentionPairLabelThing.tokFreq.getOrElse(w1.toLowerCase, 1).toFloat > 0.1
@@ -324,7 +337,7 @@ object CorefFeatures {
   val singDet = Set("a ", "an ", "this ")
   val pluDet = Set("those ", "these ", "some ")
 
-  def numbersMatch(m1: CorefMention, m2: CorefMention): Char = {
+  def numbersMatch(m1: Mention, m2: Mention): Char = {
     val n1 = m2.number
     val n2 = m1.number
 
@@ -333,7 +346,7 @@ object CorefFeatures {
     else if (n1 != n2 && n1 != 'u' && n2 != 'u')
       'f'
     else if (n1 == 'u' || n2 == 'u') {
-      if (m1.span.toSeq.map(t => t.string.trim).mkString(" ").equals(m2.span.toSeq.map(t => t.string.trim).mkString(" ")))
+      if (m1.toSeq.map(t => t.string.trim).mkString(" ").equals(m2.toSeq.map(t => t.string.trim).mkString(" ")))
         't'
       else
         'u'
@@ -344,39 +357,39 @@ object CorefFeatures {
 
   val relativizers = Set("who", "whom", "which", "whose", "whoever", "whomever", "whatever", "whichever", "that")
 
-  def areAppositive(m1: CorefMention, m2: CorefMention): Boolean = {
+  def areAppositive(m1: Mention, m2: Mention): Boolean = {
     (m2.isProper || m1.isProper) &&
-      (m2.span.last.next(2) == m1.span.head && m2.span.last.next.string.equals(",") ||
-        m1.span.last.next(2) == m2.span.head && m1.span.last.next.string.equals(","))
+      (m2.last.next(2) == m1.head && m2.last.next.string.equals(",") ||
+        m1.last.next(2) == m2.head && m1.last.next.string.equals(","))
   }
 
-  def isRelativeFor(m1: CorefMention, m2: CorefMention) =
+  def isRelativeFor(m1: Mention, m2: Mention) =
     relativizers.contains(m1.lowerCaseHead) &&
-      (m2.span.head == m1.span.last.next ||
-        (m2.span.head == m1.span.last.next(2) && m1.span.last.next.string.equals(",")
-          || m2.span.head == m1.span.last.next(2) && m1.span.last.next.string.equals(",")))
+      (m2.head == m1.last.next ||
+        (m2.head == m1.last.next(2) && m1.last.next.string.equals(",")
+          || m2.head == m1.last.next(2) && m1.last.next.string.equals(",")))
 
 
-  def areRelative(m1: CorefMention, m2: CorefMention): Boolean = isRelativeFor(m1, m2) || isRelativeFor(m2, m1)
+  def areRelative(m1: Mention, m2: Mention): Boolean = isRelativeFor(m1, m2) || isRelativeFor(m2, m1)
 
-  def canBeAliases(m1: CorefMention, m2: CorefMention): Boolean = {
+  def canBeAliases(m1: Mention, m2: Mention): Boolean = {
     val eType1 = m2.predictEntityType
     val eType2 = m1.predictEntityType
 
-    val m1head = m2.span
-    val m2head = m1.span
-    val m1Words = m1head.phrase.split("\\s")
-    val m2Words = m2head.phrase.split("\\s")
+   // val m1head = m2.span
+   // val m2head = m1.span
+    val m1Words = m1.phrase.split("\\s")
+    val m2Words = m2.phrase.split("\\s")
 
     if (m2.isProper && m1.isProper && m2.predictEntityType.equals(m1.predictEntityType) && (m2.predictEntityType.equals("PERSON") || m2.predictEntityType.equals("GPE")))
-      return m2.span.last.string.toLowerCase equals m1.span.last.string.toLowerCase
+      return m2.last.string.toLowerCase equals m1.last.string.toLowerCase
 
     else if ((eType1.equals("ORG") || eType1.equals("unknown")) && (eType2.equals("ORG") || eType2.equals("unknown"))) {
       val (initials, shorter) =
         if (m1Words.length < m2Words.length)
-          (m2.initials, m1head.phrase)
+          (m2.initials, m1.phrase)
         else
-          (m1.initials, m2head.phrase)
+          (m1.initials, m2.phrase)
       return shorter.replaceAll("[., ]", "") equalsIgnoreCase initials
     }
 

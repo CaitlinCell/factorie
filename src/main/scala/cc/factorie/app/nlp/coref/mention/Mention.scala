@@ -8,12 +8,9 @@ import cc.factorie.app.nlp.phrase.{Phrase}
 class MentionList(spans:Iterable[Mention]) extends TokenSpanList[Mention](spans)
 
 //See also CorefMention
-/** A TokenSpan holding a mention of an entity.  
-    Note that headTokenIndex is an offset from the beginning of this span, not the beginning of the Section.
-    Note also that since Mention is a Span, and Span is a sequence over Tokens, "this.head" is the first token of the span, not the "natural language head" of the phrase; for the later use "this.headToken". */
-class Mention(section:Section, start:Int, length:Int, val headTokenIndex: Int = -1) extends Phrase(section,start,length,headTokenIndex) with Attr {
-  def this(span:TokenSpan, headTokenIndex:Int = -1) = this(span.section, span.start, span.length, headTokenIndex)
-}
+//class Mention2(section:Section, start:Int, length:Int, val headTokenIndex: Int = -1) extends Phrase(section,start,length,headTokenIndex) with Attr {
+//  def this(span:TokenSpan, headTokenIndex:Int = -1) = this(span.section, span.start, span.length, headTokenIndex)
+//}
 
 
 object OntonotesMentionTypeDomain extends CategoricalDomain(List("PRO", "NOM", "NAM"))
@@ -25,6 +22,7 @@ class MentionType(val mention:Mention, targetValue:String) extends LabeledCatego
 }
 
 // TODO Is this really necessary?  I think an entity should be more than this. -akm
+
 class Entity(val name: String = "")
 
 

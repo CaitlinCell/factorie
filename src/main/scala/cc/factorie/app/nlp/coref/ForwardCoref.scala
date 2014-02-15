@@ -77,10 +77,10 @@ abstract class ForwardCorefBase extends DocumentAnnotator {
 
 
   def generateTrainingInstances(d: Document, map: GenericEntityMap[Mention]): Seq[MentionPairLabel] = {
-    generateMentionPairLabels(d.attr[MentionList].map(CorefMention.mentionToCorefMention), map)
+    generateMentionPairLabels(d.attr[MentionList], map)
   }
 
-  protected def generateMentionPairLabels(mentions: Seq[CorefMention], map: GenericEntityMap[Mention] = null): Seq[MentionPairLabel] = {
+  protected def generateMentionPairLabels(mentions: Seq[Mention], map: GenericEntityMap[Mention] = null): Seq[MentionPairLabel] = {
     val labels = new ArrayBuffer[MentionPairLabel]
     for (i <- 0 until mentions.size){
       if(!options.usePronounRules || !mentions(i).isPRO)
@@ -90,7 +90,7 @@ abstract class ForwardCorefBase extends DocumentAnnotator {
     labels
   }
 
-  protected def generateMentionPairLabelsForOneAnaphor(orderedMentions: Seq[CorefMention], anaphorIndex: Int, map: GenericEntityMap[Mention] = null): Seq[MentionPairLabel] = {
+  protected def generateMentionPairLabelsForOneAnaphor(orderedMentions: Seq[Mention], anaphorIndex: Int, map: GenericEntityMap[Mention] = null): Seq[MentionPairLabel] = {
     val labels = new ArrayBuffer[MentionPairLabel]
     val m1 = orderedMentions(anaphorIndex)
     var numAntecedent = 0
@@ -120,7 +120,7 @@ abstract class ForwardCorefBase extends DocumentAnnotator {
 
         // merge features from neighboring mentions that are in the same chain as m2
         assert(map != null, "Options.mergeNeighborFeatures requires non-null mention-entityID map")
-        val mergeables = labels.filter(l => map.reverseMap(l.mention2.mention) == map.reverseMap(m2.mention))
+        val mergeables = labels.filter(l => map.reverseMap(l.mention2) == map.reverseMap(m2))
         mergeFeatures(cl.features, mergeables.map(_.features))
 
         labels += cl
@@ -226,20 +226,20 @@ abstract class ForwardCorefBase extends DocumentAnnotator {
   def processDocumentOneModel(doc: Document): GenericEntityMap[Mention] = {
     val ments = doc.attr[MentionList]
     assertSorted(ments)
-    val corefMentions = ments.map(CorefMention.mentionToCorefMention)
-    val map = processDocumentOneModelFromMentions(corefMentions)
+    //val corefMentions = ments.map(Mention.mentionToCorefMention)
+    val map = processDocumentOneModelFromMentions(ments)
     map
   }
 
-  def processDocumentOneModelFromMentions(ments: Seq[CorefMention]): GenericEntityMap[Mention] = {
+  def processDocumentOneModelFromMentions(ments: Seq[Mention]): GenericEntityMap[Mention] = {
     val predMap = new GenericEntityMap[Mention]
-    assertSorted(ments.map(_.mention))
-    ments.foreach(m => predMap.addMention(m.mention, predMap.numMentions.toLong))
+    assertSorted(ments)
+    ments.foreach(m => predMap.addMention(m, predMap.numMentions.toLong))
     for (i <- 0 until ments.size) {
       val m1 = ments(i)
       val bestCand = processOneMention(ments, i, predMap)
       if (bestCand != null) {
-        predMap.addCoreferentPair(m1.mention, bestCand.mention)
+        predMap.addCoreferentPair(m1, bestCand)
       }
     }
     predMap
@@ -249,14 +249,14 @@ abstract class ForwardCorefBase extends DocumentAnnotator {
     processDocumentOneModelFromEntitiesFromMentions(doc.attr[MentionList].sortBy(mention => (mention.tokens.head.stringStart, mention.length)))
   }
 
-  def processDocumentOneModelFromEntitiesFromMentions(inputMentions: Seq[Mention]): GenericEntityMap[Mention] = {
+  def processDocumentOneModelFromEntitiesFromMentions(allMentions: Seq[Mention]): GenericEntityMap[Mention] = {
 
-    val allMents = inputMentions.map(CorefMention.mentionToCorefMention)
-    val ments = if(options.usePronounRules) allMents.filter(!_.isPRO) else allMents
+    //val allMents = inputMentions
+    val ments = if(options.usePronounRules) allMentions.filter(!_.isPRO) else allMentions
 
-    val predMap = new GenericEntityMap[CorefMention]
-    allMents.foreach(m => predMap.addMention(m, predMap.numMentions.toLong))
-    val candidateMentionsToTheLeft = ArrayBuffer[CorefMention]()
+    val predMap = new GenericEntityMap[Mention]
+    allMentions.foreach(m => predMap.addMention(m, predMap.numMentions.toLong))
+    val candidateMentionsToTheLeft = ArrayBuffer[Mention]()
 
     for (i <- 0 until ments.size) {
       val m1 = ments(i)
@@ -269,18 +269,18 @@ abstract class ForwardCorefBase extends DocumentAnnotator {
       }
     }
     if(options.usePronounRules)
-      doCorefOnPronounsUsingRules(predMap,allMents)
+      doCorefOnPronounsUsingRules(predMap,allMentions)
 
     // we need to convert it into an entity Map of Mentions, rather than CorefMentions
     val predMap2 = new GenericEntityMap[Mention]
-    predMap2.entities ++= predMap.entities.map(kv => (kv._1,kv._2.map(m => m.mention)))
-    predMap2.reverseMap ++= predMap.reverseMap.map(kv => (kv._1.mention,kv._2))
+    predMap2.entities ++= predMap.entities.map(kv => (kv._1,kv._2))
+    predMap2.reverseMap ++= predMap.reverseMap.map(kv => (kv._1,kv._2))
     predMap2
   }
 
   case class CoarseMentionType(gender: String, number: String)
 
-  def doCorefOnPronounsUsingRules(predMap: GenericEntityMap[CorefMention],allMentions: Seq[CorefMention]): Unit = {
+  def doCorefOnPronounsUsingRules(predMap: GenericEntityMap[Mention],allMentions: Seq[Mention]): Unit = {
 
     //first, make a map from entity ids in the predMap to sets of CoarseMentionTypes that appear somewhere in the entity.
     val numGenderSetsForEntities = predMap.entities.map(kv => (kv._1,kv._2.map(m => CoarseMentionType(m.gender,m.number)).toSet))
@@ -307,10 +307,10 @@ abstract class ForwardCorefBase extends DocumentAnnotator {
   }
 
 
-  def processOneMention(orderedMentions: Seq[CorefMention], mentionIndex: Int, predMap: GenericEntityMap[Mention]): CorefMention = {
+  def processOneMention(orderedMentions: Seq[Mention], mentionIndex: Int, predMap: GenericEntityMap[Mention]): Mention = {
     val m1 = orderedMentions(mentionIndex)
     val candLabels = ArrayBuffer[MentionPairFeatures]()
-    var bestCand: CorefMention = null
+    var bestCand: Mention = null
     var bestScore = Double.MinValue
 
     var j = mentionIndex - 1
@@ -323,7 +323,7 @@ abstract class ForwardCorefBase extends DocumentAnnotator {
 
       if (!cataphora || options.allowTestCataphora) {
         val candLabel = new MentionPairFeatures(model, m1, m2, orderedMentions, options=options)
-        val mergeables = candLabels.filter(l => predMap.reverseMap(l.mention2.mention) == predMap.reverseMap(m2.mention))
+        val mergeables = candLabels.filter(l => predMap.reverseMap(l.mention2) == predMap.reverseMap(m2))
         mergeFeatures(candLabel, mergeables)
         candLabels += candLabel
         val score = if (m1.isProper && m1.nounWords.forall(m2.nounWords.contains) && m2.nounWords.forall(m1.nounWords.contains)  || options.mergeMentionWithApposition && (m1.isAppositionOf(m2) || m2.isAppositionOf(m1))) Double.PositiveInfinity
@@ -343,16 +343,16 @@ abstract class ForwardCorefBase extends DocumentAnnotator {
   }
 
   //this doesn't look at the preceeding mentions, but only the mentions that are in an existing entity or are proper
-  def processOneMentionByEntities(orderedMentions: Seq[CorefMention], mentionIndex: Int, candidateMentionsToTheLeft: ArrayBuffer[CorefMention], predMap: GenericEntityMap[CorefMention]): CorefMention = {
+  def processOneMentionByEntities(orderedMentions: Seq[Mention], mentionIndex: Int, candidateMentionsToTheLeft: ArrayBuffer[Mention], predMap: GenericEntityMap[Mention]): Mention = {
     val m1 = orderedMentions(mentionIndex)
     val candLabels = ArrayBuffer[MentionPairFeatures]()
-    var bestCand: CorefMention = null
+    var bestCand: Mention = null
     var bestScore = Double.MinValue
 
     var j = mentionIndex - 1
     val m1IsPro = m1.isPRO
     var numPositivePairs = 0
-    val mentionsComparedWith = collection.mutable.HashSet[CorefMention]()
+    val mentionsComparedWith = collection.mutable.HashSet[Mention]()
     //this while loop is the same as in the normal left-right code
     var numCompared = 0
     while (j >= 0 && (numPositivePairs < options.numPositivePairsTest || !options.pruneNegTest) && numCompared < options.numCompareToTheLeft){

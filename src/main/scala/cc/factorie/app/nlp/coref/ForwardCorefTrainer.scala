@@ -168,7 +168,7 @@ object ForwardCorefTrainer extends HyperparameterMain{
       mentPairClsf.serialize(opts.serialize.value)
 
     if (opts.writeConllFormat.value) {
-      val conllFormatPrinter = new CorefScorer[CorefMention]
+      val conllFormatPrinter = new CorefScorer[Mention]
       val conllFormatGold = new java.io.PrintStream(new java.io.File("conll-test.filteredgold"))
       testDocs.foreach(d => conllFormatPrinter.printConll2011Format(d, testTrueMaps(d.name), conllFormatGold))
       conllFormatGold.flush()

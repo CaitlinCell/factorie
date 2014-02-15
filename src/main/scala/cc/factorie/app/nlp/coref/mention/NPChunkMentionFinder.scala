@@ -48,9 +48,8 @@ class NPChunkMentionFinder[L<:ChunkTag](implicit m: Manifest[L]) extends Documen
 
   //Sets mention entity type to empty in case an entity type labeler is not run on the mentions retrieved
   def addChunkMentions(document: Document): Seq[Mention] = {
-    getMentionSpans(document).map{labelSpan =>
-      val s = labelSpan
-      val m = new Mention(s, s.length-1)
+    getMentionSpans(document).map{s =>
+      val m = new Mention(s.section,s.start, s.length, Mention.getHeadIdx(s.value))
       m.attr += new MentionEntityType(m,"")
       m
     }

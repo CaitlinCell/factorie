@@ -2,12 +2,12 @@ package cc.factorie.app.nlp.coref.mention
 
 import cc.factorie.app.nlp.coref._
 import cc.factorie.app.nlp.wordnet.WordNet
-import cc.factorie.app.nlp.{Section, Token, TokenSpan}
+import cc.factorie.app.nlp.{TokenSpanList, Section, Token, TokenSpan}
 import cc.factorie.app.strings.Stopwords
 import scala.collection.mutable
 import cc.factorie.app.nlp.phrase.{Phrase, NumberLabel, GenderLabel}
 import cc.factorie.util.Attr
-import cc.factorie.variable.Span
+import cc.factorie.variable.{LabeledCategoricalVariable, CategoricalDomain, Span}
 
 /**
  * User: apassos
@@ -15,6 +15,18 @@ import cc.factorie.variable.Span
  * Update Feb '14: Cellier
  *    Removed Mention, Made CorefMention extend from Phrase
  */
+
+object OntonotesMentionTypeDomain extends CategoricalDomain(List("PRO", "NOM", "NAM"))
+
+/** Categorical variable indicating whether the mention is a pronoun, nominal or proper noun.
+    (Obviously different from MentionEntityType, which may indicate whether it is a person, location, organization, etc.) */
+class MentionType(val mention:Mention, targetValue:String) extends LabeledCategoricalVariable(targetValue) {
+  def domain = OntonotesMentionTypeDomain
+}
+
+class Entity(val name: String = "")
+
+class MentionList(spans:Iterable[Mention]) extends TokenSpanList[Mention](spans)
 
 object Mention{
   def phraseToMention(p: Phrase): Mention = {

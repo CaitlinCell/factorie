@@ -80,6 +80,9 @@ class CorefScorer[T] {
     print(name+" micro "+microMUC.toString("MUC") + "\n")
     print(name+" micro "+microCE.toString("C-E") + "\n")
     print(name+" micro "+microCM.toString("C-M") + "\n")
+    val average = (microCE.f1 + microB3.f1 + microMUC.f1) / 3.0
+    print(name+" average "+average + "\n")
+
   }
 }
 

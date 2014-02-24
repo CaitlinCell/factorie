@@ -195,13 +195,14 @@ abstract class ForwardCorefBase extends DocumentAnnotator {
       val pw = CorefEvaluator.Pairwise.evaluate(predMap, trueMap)
       val b3 = CorefEvaluator.BCubedNoSingletons.evaluate(predMap, trueMap)
       val muc = CorefEvaluator.MUC.evaluate(predMap, trueMap)
-
+      val ce = CorefEvaluator.CeafE.evaluate(predMap,trueMap)
       scorerMutex.synchronized {
         scorer.macroMUC.macroAppend(muc)
         scorer.macroPW.macroAppend(pw)
         scorer.microB3.microAppend(b3)
         scorer.microMUC.microAppend(muc)
         scorer.microPW.microAppend(pw)
+        scorer.microCE.microAppend(ce)
       }
       null
     }

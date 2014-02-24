@@ -232,6 +232,7 @@ object CorefEvaluator {
       m
     }
   }
+  object CeafE extends CeafE(true)
 
   class CeafE(val ignoreSingletons: Boolean = true) extends MetricEvaluator {
     def evaluate[M](pred: GenericEntityMap[M], truth: GenericEntityMap[M]): Metric = {
